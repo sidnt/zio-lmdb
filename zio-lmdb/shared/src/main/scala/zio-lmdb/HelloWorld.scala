@@ -1,12 +1,13 @@
 package zio.lmdb
 
+import zio._
 import zio.App
 import zio.console._
 
 object HelloWorld extends App {
 
   def run(args: List[String]) =
-    myAppLogic.fold(_ => 1, _ => 0)
+    myAppLogic.fold(_ => ExitCode(1), _ => ExitCode(0))
 
   val myAppLogic =
     for {
@@ -14,4 +15,10 @@ object HelloWorld extends App {
       name <- getStrLn
       _    <- putStrLn(s"Hello, $name, welcome to ZIO!")
     } yield ()
+}
+
+
+object HelloScala extends scala.App {
+  val x = println("hi")
+  println(x)
 }
