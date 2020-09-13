@@ -1,5 +1,5 @@
 package zio.lmdb
-import MdbEnvConfig._
+import fsHelpers._
 
 import zio._
 import org.lmdbjava.Env
@@ -28,13 +28,76 @@ object MdbEnv {
       * introduce a type - EnvironmentOpeningError and handle it ...
       */
     val mdbEnvHandle: Task[Env[BB]]
+    
   }
 
-  val managedMdbEnvHandleL: ZLayer[MdbEnvConfig, Throwable, MdbEnv] = ???
+  def managedMdbEnvService(from:MdbEnvConfig.Service) = {
+
+    val acquireMdbEnvService = for {
+      envDirPathFile <- createOrGetDirPathFile(from.envDirPath)
+      mdbEnvService = new MdbEnv.Service {
+        val mdbEnvHandle = Task(Env.open(envDirPathFile,from.envMaxMiBs))
+      }
+    } yield mdbEnvService
+
+    val releaseMdbEnvService = (mes: MdbEnv.Service) => (for {
+      mdbEnvHandle <- mes.mdbEnvHandle
+    } yield (mdbEnvHandle.close())).orDie
+
+    ZManaged.make(acquireMdbEnvService)(releaseMdbEnvService)
+  }
+
+  val managedMdbEnvServiceLayer = ZLayer.fromServiceManaged(managedMdbEnvService)
+    
+}
+
+// wipland below //
+/*
+  // val managedMdbEnvHandleL: ZLayer[MdbEnvConfig, Throwable, MdbEnv] =
+  //   ZLayer.fromAcquireRelease[MdbEnvConfig, Throwable, MdbEnv.Service](for {
+  //     mec <- ZIO.access[MdbEnvConfig](_.get)
+  //     ???
+  //   })(???)
+  
+
+
+  // val managedMdbEnvHandleL2: ZLayer[MdbEnvConfig, Throwable, MdbEnv] =
+  //   ZLayer.fromAcquireRelease[MdbEnvConfig, Throwable, MdbEnv.Service](???)
+
+  // val managedMdbEnvHandleL3: ZLayer[MdbEnvConfig, Throwable, MdbEnv] =
+  //   ZLayer.fromServiceManaged() //mes.mdbEnvHandle.map((e:Env[BB]) => e.close()).orDie )
+
+
+  def f(a:MdbEnvConfig.Service) =
+    ZManaged.make (
+      for {
+        edfp <- fsHelpers.createOrGetDirPathFile(a.envDirPath)
+        envt = Task(Env.open(edfp,a.envMaxMiBs))
+      } yield new MdbEnv.Service { val mdbEnvHandle: Task[Env[zio.lmdb.BB]] = envt }
+    )( (mes:MdbEnv.Service) => (for {
+      meh <- mes.mdbEnvHandle
+      _ = meh.close()
+    } yield ()).orDie )
+    // )( (mes:MdbEnv.Service) => mes.mdbEnvHandle.map((e:Env[BB]) => e.close()).orDie )
+
+  def release(mes:MdbEnv.Service) = for {
+    meh <- mes.mdbEnvHandle
+    // meh <- meht
+    _ <- UIO(meh.close())
+  } yield ()
+
+  val mehl4 = ZLayer.fromServiceManaged((f))
+
+
+
+
+  //   def f2(a:MdbEnvConfig.Service):ZManaged[Any,Throwable,MdbEnv.Service] =
+  //   ZManaged.make()()
+  // val managedMdbEnvHandleL4: ZLayer[MdbEnvConfig, Throwable, MdbEnv] =
+  //   ZLayer.fromServiceManaged[MdbEnvConfig.Service, Any, Throwable, MdbEnv.Service](f)
 
 }
-/*
-// wipland below //
+
 object MdbEnv1 {
   type MdbEnv = Has[Service]
 
