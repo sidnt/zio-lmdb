@@ -1,8 +1,7 @@
 package zio.lmdb
+import MdbEnvConfig._
 
-import fsHelpers._
 import zio._
-import zio.lmdb.MdbEnvConfig._
 import org.lmdbjava.Env
 
 object MdbEnv {
@@ -24,12 +23,17 @@ object MdbEnv {
       * there are 2 additional requirements for managing this handle
       * when opening fails OR when zio-lmdb client app shuts down,
       * the handle must be discarded with env.close
+      * .
+      * #todo maybe we can define an error hierarchy from lmdbjava
+      * introduce a type - EnvironmentOpeningError and handle it ...
       */
     val mdbEnvHandle: Task[Env[BB]]
   }
 
-}
+  val managedMdbEnvHandleL: ZLayer[MdbEnvConfig, Throwable, MdbEnv] = ???
 
+}
+/*
 // wipland below //
 object MdbEnv1 {
   type MdbEnv = Has[Service]
@@ -198,3 +202,4 @@ object MdbEnvO {
   //   ZLayer.fromAcquireRelease(???)
 
 }
+*/
