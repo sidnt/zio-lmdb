@@ -20,6 +20,10 @@ object MdbEnv {
       * like mdbEnvHandle: ZIO[MdbEnvConfig, Throwable, Env[BB]]
       * or, we can encode this dependency via ZLayer as:
       * ZLayer[MdbEnvConfig, Throwable, MdbEnv]
+      * .
+      * there are 2 additional requirements for managing this handle
+      * when opening fails OR when zio-lmdb client app shuts down,
+      * the handle must be discarded with env.close
       */
     val mdbEnvHandle: Task[Env[BB]]
   }
