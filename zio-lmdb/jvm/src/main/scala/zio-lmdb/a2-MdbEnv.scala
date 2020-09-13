@@ -9,7 +9,19 @@ object MdbEnv {
   type MdbEnv = Has[Service]
 
   trait Service {
-    val mdbEnvHandle: ???
+
+    /** opening an mdbEnvHandle can fail as:
+      * http://www.lmdb.tech/doc/group__mdb.html#ga32a193c6bf4d7d5c5d579e71f22e9340
+      * so val mdbEnvHandle RT better be an effect
+      * now, we want to declare a dependence on the MdbEnvConfig service,
+      * but where/how do we encode this dependency requirement?
+      * .
+      * we can make mdbEnvHandle itself depend on it,
+      * like mdbEnvHandle: ZIO[MdbEnvConfig, Throwable, Env[BB]]
+      * or, we can encode this dependency via ZLayer as:
+      * ZLayer[MdbEnvConfig, Throwable, MdbEnv]
+      */
+    val mdbEnvHandle: Task[Env[BB]]
   }
 
 }
