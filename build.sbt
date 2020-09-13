@@ -35,7 +35,7 @@ addCommandAlias(
   "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 )
 
-val zioVersion = "1.0.0-RC21-2"
+val zioVersion = "1.0.1"
 
 lazy val root = project
   .in(file("."))
@@ -83,7 +83,9 @@ lazy val zioLmdbJVM = zioLmdb.jvm
   .settings(dottySettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.lmdbjava" % "lmdbjava" % "0.8.1"
+      "org.lmdbjava" % "lmdbjava" % "0.8.1",
+      "dev.zio" %% "zio-nio" % "1.0.0-RC9"
+      // "dev.zio" %% "zio-nio-core" % "1.0.0-RC9"
     )
   )
 
