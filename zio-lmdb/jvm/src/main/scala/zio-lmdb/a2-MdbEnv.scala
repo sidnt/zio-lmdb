@@ -21,7 +21,8 @@ object MdbEnv {
       * ZLayer[MdbEnvConfig, Throwable, MdbEnv]
       * .
       * there are 2 additional requirements for managing this handle
-      * when opening fails OR when zio-lmdb client app shuts down,
+      * #todo when opening fails OR
+      * when zio-lmdb client app shuts down,
       * the handle must be discarded with env.close
       * .
       * #todo maybe we can define an error hierarchy from lmdbjava
