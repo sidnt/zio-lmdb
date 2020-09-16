@@ -32,6 +32,8 @@ object MdbEnv {
     
   }
 
+  val mdbEnvHandle = ZIO.accessM[MdbEnv](_.get.mdbEnvHandle)
+
   def managedMdbEnvService(from:MdbEnvConfig.Service) = {
 
     val acquireMdbEnvService = for {
