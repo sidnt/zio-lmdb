@@ -3,7 +3,6 @@ package zio.lmdb
 import zio._
 
 object MdbEnvConfig {
-  type MdbEnvConfig = Has[Service]
 
   trait Service {
     val envDirPath: String
