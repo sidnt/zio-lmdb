@@ -7,6 +7,7 @@ import clock._
 import blocking._
 import org.lmdbjava.Env
 import java.nio.ByteBuffer
+import org.lmdbjava.Dbi
 
 object try3 extends App {
 
@@ -55,7 +56,9 @@ object try3 extends App {
     def f(ecs: envConfig.Service): ZManaged[Console with Clock with Blocking, Err, envHandle.Service] = ZManaged.make(
       for {
         edfp  <- fsHelpers.createOrGetDirPathFile(ecs.envDirPath)
-        eh    <- consoleLog(s"attempting to open env: ${ecs.envDirPath}") *> Task(Env.open(edfp, ecs.envMaxMiBs)) orElse IO.fail(EnvOpeningFailed(reasonUnknown))
+        _     <- consoleLog(s"attempting to open env: ${ecs.envDirPath}") 
+        eh    <- Task(Env.open(edfp, ecs.envMaxMiBs)) orElse IO.fail(EnvOpeningFailed(reasonUnknown))
+        _     <- consoleLog(s"succeeded in opening env, got: ${eh}") 
         ehs   = new envHandle.Service { val envHandle = eh }
       } yield ehs
     )( ehs => for {
@@ -72,17 +75,57 @@ object try3 extends App {
   }; import envHandle._
 
 
+
+
+
+  object dbiHandle {
+    type DbiHandle = Has[dbiHandle.Service]
+    trait Service {
+      val dbiHandle: Dbi[BB]
+    }
+    val getDbiHandle = ZIO.access[DbiHandle](_.get.dbiHandle)
+
+    val defaultDbiHandle/*: ZLayer[Console with EnvHandle, DbiOpeningFailed, DbiHandle]*/ =
+      ZLayer.fromServiceM[envHandle.Service, Console with Clock, DbiOpeningFailed, dbiHandle.Service]( ehs =>
+        for {
+          _     <- consoleLog(s"attempting to open defaultDbi under Env ${ehs.envHandle}")
+          dhs   <- Task( new dbiHandle.Service {
+                          val dbiHandle: Dbi[BB] = ehs.envHandle.openDbi(null: String, org.lmdbjava.DbiFlags.MDB_CREATE)
+                        }) orElse IO.fail(DbiOpeningFailed(reasonUnknown))
+          _     <- consoleLog(s"succeeded in opening defaultDbi, got: ${dhs.dbiHandle}")
+        } yield dhs
+      )
+
+    val defaultDbiHandle0: ZLayer[EnvHandle, DbiOpeningFailed, DbiHandle] =
+      ZLayer.fromServiceM( ehs => 
+        IO.effect(new dbiHandle.Service {
+          val dbiHandle: Dbi[BB] = ehs.envHandle.openDbi(null: String, org.lmdbjava.DbiFlags.MDB_CREATE)
+        }) orElse IO.fail(DbiOpeningFailed(reasonUnknown))
+      )
+  }; import dbiHandle._
+
+
+
+
+
   
   val l0: ULayer[ZEnv with EnvConfig] = ZEnv.live ++ defaultEnvConfig
   val l1: ZLayer[Any, Err, EnvHandle] = l0 >>> mDefaultEnvHandle
-  val l2: ZLayer[Any, Err, ZEnv with EnvConfig] = l0 ++ l1
+  val l2: ZLayer[Any, Err, ZEnv with EnvConfig] = l0 ++ l1 // useless
 
-  val p1: ZIO[ZEnv with EnvHandle, Nothing, Unit] = for {
+  val l3: ZLayer[Any, Err, DbiHandle] = (ZEnv.live ++ l1) >>> defaultDbiHandle
+  val l4: ZLayer[Any, Err, EnvHandle with DbiHandle] = l1 ++ l3
+
+  val p1: ZIO[ZEnv with EnvHandle with DbiHandle, Nothing, Unit] = for {
+    _     <- consoleLog(s"domain logic starts here")
     envH  <- getEnvHandle
     _     <- consoleLog(s"got env handle: $envH")
+    dbiH  <- getDbiHandle
+    _     <- consoleLog(s"got dbi handle: $dbiH")
+    _     <- consoleLog(s"domain logic ends here")
   } yield ()
 
-  val p1p = p1.provideLayer(ZEnv.live ++ l1)
+  val p1p = p1.provideLayer(ZEnv.live ++ l4)
   // val p1p2 = p1.provideLayer( (ZEnv.live ++ defaultEnvConfig) )
 
   def run(args: List[String]): URIO[ZEnv,ExitCode] = p1p.exitCode
